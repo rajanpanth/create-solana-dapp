@@ -1,5 +1,20 @@
 # create-solana-dapp
 
+## 4.9.0
+
+### Minor Changes
+
+- [#255](https://github.com/solana-foundation/create-solana-dapp/pull/255)
+  [`4684040`](https://github.com/solana-foundation/create-solana-dapp/commit/4684040d1aba239076a16d9a7a22eb5e7f831083)
+  Thanks [@beeman](https://github.com/beeman)! - Expose embeddable create flow and argument parsing APIs from the
+  package root, and parse `--templates-url` values correctly.
+
+### Patch Changes
+
+- [#249](https://github.com/solana-foundation/create-solana-dapp/pull/249)
+  [`41835c6`](https://github.com/solana-foundation/create-solana-dapp/commit/41835c630495c44ef49893e3221b83f5d0031ac2)
+  Thanks [@beeman](https://github.com/beeman)! - Show all Solana Mobile templates in the mobile template prompt.
+
 ## 4.8.5
 
 ### Patch Changes
