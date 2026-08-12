@@ -52,6 +52,28 @@ describe('createAppTaskInstallDependencies', () => {
     expect(execAndWait).toHaveBeenCalledWith(expect.stringMatching(/^npm install /), targetDirectory)
   })
 
+  it("removes Bun's legacy binary lockfile (bun.lockb)", async () => {
+    const targetDirectory = await mkdtemp(join(tmpdir(), 'create-solana-dapp-install-'))
+    temporaryDirectories.push(targetDirectory)
+    const selectedLockFile = join(targetDirectory, 'package-lock.json')
+    const staleLockFile = join(targetDirectory, 'bun.lockb')
+    await Promise.all([writeFile(selectedLockFile, ''), writeFile(staleLockFile, '')])
+
+    const task = createAppTaskInstallDependencies({
+      packageManager: 'npm',
+      skipInstall: false,
+      targetDirectory,
+      verbose: false,
+    } as GetArgsResult)
+
+    await task.task((value) => value)
+
+    expect(existsSync(selectedLockFile)).toBe(true)
+    expect(existsSync(staleLockFile)).toBe(false)
+    expect(execAndWait).toHaveBeenCalledOnce()
+    expect(execAndWait).toHaveBeenCalledWith(expect.stringMatching(/^npm install /), targetDirectory)
+  })
+
   it('continues installation when a stale lockfile disappears before removal', async () => {
     const targetDirectory = await mkdtemp(join(tmpdir(), 'create-solana-dapp-install-'))
     temporaryDirectories.push(targetDirectory)
