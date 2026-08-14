@@ -48,6 +48,10 @@ function toSnakeName(name: string): string {
   return getNameSegments(name).join('_').toLowerCase()
 }
 
+function toCanonicalName(name: string): string {
+  return getNameSegments(name).join('').toLowerCase()
+}
+
 function renameEntryPaths(entry: InitScriptRenameEntry): string[] {
   // `paths` is the deprecated spelling of `in`; the schema guarantees exactly one of them is set
   return entry.in ?? entry.paths ?? []
@@ -151,14 +155,20 @@ export async function initScriptRename(args: GetArgsResult, rename?: InitScriptR
   const { contents } = getPackageJson(args.targetDirectory)
   await renameProject(args, verbose)
 
-  if (contents.name && rename?.[contents.name]) {
-    const { [contents.name]: _packageName, ...remainingRename } = rename
-    if (args.verbose) {
-      log.warn(`initScriptRename: skipping rename for '${contents.name}' as it matches package.json name`)
-    }
-    await initScriptRenameEntries(args, remainingRename)
+  if (!contents.name || !rename) {
+    await initScriptRenameEntries(args, rename)
     return
   }
 
-  await initScriptRenameEntries(args, rename)
+  const entries = Object.entries(rename)
+  const skipped = entries.filter(([from]) => toCanonicalName(from) === toCanonicalName(contents.name!))
+  const remainingRename = Object.fromEntries(entries.filter(([from]) => toCanonicalName(from) !== toCanonicalName(contents.name!)))
+
+  if (skipped.length > 0 && args.verbose) {
+    log.warn(
+      `initScriptRename: skipping rename for '${skipped.map(([from]) => from).join(', ')}' as it matches package.json name`,
+    )
+  }
+
+  await initScriptRenameEntries(args, remainingRename)
 }

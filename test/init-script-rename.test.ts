@@ -227,6 +227,24 @@ describe('initScriptRename', () => {
     expect(log.warn).not.toHaveBeenCalled()
   })
 
+  it('should skip rename entries that are package name variants', async () => {
+    const args = { ...baseArgs, name: 'my-counter' }
+    const rename = {
+      Counter: {
+        in: ['anchor/programs/counter/src'],
+        to: '{{name}}',
+      },
+    }
+    vi.mocked(getPackageJson).mockReturnValue({
+      contents: { name: 'counter' },
+      path: `${baseArgs.targetDirectory}/package.json`,
+    })
+
+    await initScriptRename(args, rename)
+
+    expect(searchAndReplace).toHaveBeenCalledTimes(1)
+    expect(namesValues).not.toHaveBeenCalled()
+  })
   it('should log a message when verbose and no rename object is provided', async () => {
     const args: GetArgsResult = { ...baseArgs, verbose: true }
     await initScriptRename(args, undefined)
@@ -274,3 +292,5 @@ describe('initScriptRename', () => {
     expect(searchAndReplace).toHaveBeenCalledTimes(1)
   })
 })
+
+
