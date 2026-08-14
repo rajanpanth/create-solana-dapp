@@ -292,5 +292,3 @@ describe('initScriptRename', () => {
     expect(searchAndReplace).toHaveBeenCalledTimes(1)
   })
 })
-
-

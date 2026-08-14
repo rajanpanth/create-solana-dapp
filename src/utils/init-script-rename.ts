@@ -162,7 +162,9 @@ export async function initScriptRename(args: GetArgsResult, rename?: InitScriptR
 
   const entries = Object.entries(rename)
   const skipped = entries.filter(([from]) => toCanonicalName(from) === toCanonicalName(contents.name!))
-  const remainingRename = Object.fromEntries(entries.filter(([from]) => toCanonicalName(from) !== toCanonicalName(contents.name!)))
+  const remainingRename = Object.fromEntries(
+    entries.filter(([from]) => toCanonicalName(from) !== toCanonicalName(contents.name!)),
+  )
 
   if (skipped.length > 0 && args.verbose) {
     log.warn(
