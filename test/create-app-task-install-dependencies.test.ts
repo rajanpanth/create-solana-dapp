@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createAppTaskInstallDependencies } from '../src/utils/create-app-task-install-dependencies'
 import type { GetArgsResult } from '../src/utils/get-args-result'
 import { execAndWait } from '../src/utils/vendor/child-process-utils'
+import * as packageManager from '../src/utils/vendor/package-manager'
 
 const mockedFs = vi.hoisted(() => ({ disappearingPath: undefined as string | undefined }))
 
@@ -79,6 +80,12 @@ describe('createAppTaskInstallDependencies', () => {
     temporaryDirectories.push(targetDirectory)
     const legacyLockFile = join(targetDirectory, 'bun.lockb')
     await writeFile(legacyLockFile, '')
+    vi.spyOn(packageManager, 'getPackageManagerCommand').mockReturnValueOnce({
+      exec: 'bun',
+      globalAdd: 'bun add -g',
+      install: 'bun install --silent',
+      lockFile: 'bun.lock',
+    })
 
     const task = createAppTaskInstallDependencies({
       packageManager: 'bun',
