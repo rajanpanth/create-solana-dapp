@@ -48,10 +48,6 @@ function toSnakeName(name: string): string {
   return getNameSegments(name).join('_').toLowerCase()
 }
 
-function toCanonicalName(name: string): string {
-  return getNameSegments(name).join('').toLowerCase()
-}
-
 function renameEntryPaths(entry: InitScriptRenameEntry): string[] {
   // `paths` is the deprecated spelling of `in`; the schema guarantees exactly one of them is set
   return entry.in ?? entry.paths ?? []
@@ -161,10 +157,9 @@ export async function initScriptRename(args: GetArgsResult, rename?: InitScriptR
   }
 
   const entries = Object.entries(rename)
-  const skipped = entries.filter(([from]) => toCanonicalName(from) === toCanonicalName(contents.name!))
-  const remainingRename = Object.fromEntries(
-    entries.filter(([from]) => toCanonicalName(from) !== toCanonicalName(contents.name!)),
-  )
+  const { fromNames: packageNameVariants } = packageNameReplacementValues(contents.name, args.name)
+  const skipped = entries.filter(([from]) => packageNameVariants.includes(from))
+  const remainingRename = Object.fromEntries(entries.filter(([from]) => !packageNameVariants.includes(from)))
 
   if (skipped.length > 0 && args.verbose) {
     log.warn(

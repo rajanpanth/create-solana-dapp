@@ -1,4 +1,5 @@
 import { log } from '@clack/prompts'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ensureTargetPath } from '../src/utils/ensure-target-path'
 import { GetArgsResult } from '../src/utils/get-args-result'
@@ -244,6 +245,36 @@ describe('initScriptRename', () => {
 
     expect(searchAndReplace).toHaveBeenCalledTimes(1)
     expect(namesValues).not.toHaveBeenCalled()
+  })
+
+  it('should retain display-name entries not handled by package-name replacement', async () => {
+    const args = { ...baseArgs, name: 'my-project' }
+    const rename = {
+      'Example App': {
+        in: ['README.md'],
+        to: '{{name}}',
+      },
+    }
+    const displayNameValues = ['ExampleApp', 'EXAMPLE_APP', 'example-app', 'Example App', 'exampleApp']
+    const projectNameValues = ['MyProject', 'MY_PROJECT', 'my-project', 'My Project', 'myProject']
+    vi.mocked(getPackageJson).mockReturnValue({
+      contents: { name: 'example-app' },
+      path: `${baseArgs.targetDirectory}/package.json`,
+    })
+    vi.mocked(namesValues).mockImplementation((name) =>
+      name === 'Example App' ? displayNameValues : projectNameValues,
+    )
+    vi.mocked(ensureTargetPath).mockResolvedValue(true)
+
+    await initScriptRename(args, rename)
+
+    expect(searchAndReplace).toHaveBeenLastCalledWith(
+      join(baseArgs.targetDirectory, 'README.md'),
+      displayNameValues,
+      projectNameValues,
+      false,
+      false,
+    )
   })
   it('should log a message when verbose and no rename object is provided', async () => {
     const args: GetArgsResult = { ...baseArgs, verbose: true }
