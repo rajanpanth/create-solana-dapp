@@ -18,7 +18,7 @@ export function createAppTaskInstallDependencies(args: GetArgsResult): Task {
       }
       const deleteLockFiles = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb']
         // We don't want to delete the lock file for the current package manager
-        .filter((item) => item !== lockFile)
+        .filter((item) => item !== lockFile && !(pm === 'bun' && item === 'bun.lockb'))
         // We only want to delete the lock file if it exists
         .filter((item) => existsSync(join(args.targetDirectory, item)))
 
