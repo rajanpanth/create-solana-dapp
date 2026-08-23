@@ -116,6 +116,44 @@ describe('searchAndReplace', () => {
     consoleLogSpy.mockRestore()
   })
 
+  it('should not let one replacement rewrite the output of another (#192)', async () => {
+    // Renaming the `counter` template to `my-counter` passes several name
+    // variants, all searching for `counter`. Applied sequentially, the compact
+    // variant matched the `counter` inside the freshly written `my-counter`.
+    await writeFile(join(tempDir, 'lib.rs'), 'declare_id!("counter");')
+
+    await searchAndReplace(tempDir, ['counter', 'counter'], ['my-counter', 'mycounter'])
+
+    const content = await readFile(join(tempDir, 'lib.rs'), 'utf8')
+    expect(content).toBe('declare_id!("my-counter");')
+  })
+
+  it('should not rescan replaced text with later pairs', async () => {
+    await writeFile(join(tempDir, 'chain.txt'), 'foo')
+
+    await searchAndReplace(tempDir, ['foo', 'bar'], ['bar', 'baz'])
+
+    const content = await readFile(join(tempDir, 'chain.txt'), 'utf8')
+    expect(content).toBe('bar')
+  })
+
+  it('should prefer the longest matching search string', async () => {
+    await writeFile(join(tempDir, 'longest.txt'), 'my_counter')
+
+    await searchAndReplace(tempDir, ['counter', 'my_counter'], ['Counter', 'acme_counter'])
+
+    const content = await readFile(join(tempDir, 'longest.txt'), 'utf8')
+    expect(content).toBe('acme_counter')
+  })
+
+  it('should apply single-pass replacement to renamed paths too', async () => {
+    await writeFile(join(tempDir, 'counter.txt'), 'content')
+
+    await searchAndReplace(tempDir, ['counter', 'counter'], ['my-counter', 'mycounter'])
+
+    await expect(access(join(tempDir, 'my-counter.txt'))).resolves.toBeUndefined()
+  })
+
   it('should handle errors gracefully', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 

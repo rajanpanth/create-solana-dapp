@@ -7,6 +7,40 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 }
 
+/**
+ * Build a replacer that applies every `from` -> `to` pair in a single pass.
+ *
+ * Replacing sequentially lets one pair rewrite the output of an earlier pair,
+ * which corrupts names whenever a replacement contains another search string.
+ * Renaming the `counter` template to `my-counter` produced `my-mycounter`,
+ * because the compact variant then matched the `counter` inside the kebab
+ * result. Matching all patterns at once means replaced text is never rescanned.
+ *
+ * Longer search strings are tried first so the most specific pattern wins, and
+ * the first pair for a duplicated search string is the one that applies.
+ */
+function createReplacer(fromStrings: string[], toStrings: string[]): (value: string) => string {
+  const replacements = new Map<string, string>()
+
+  for (const [i, fromString] of fromStrings.entries()) {
+    if (fromString.length > 0 && !replacements.has(fromString)) {
+      replacements.set(fromString, toStrings[i])
+    }
+  }
+
+  if (replacements.size === 0) {
+    return (value) => value
+  }
+
+  const pattern = [...replacements.keys()]
+    .sort((a, b) => b.length - a.length)
+    .map((from) => escapeRegExp(from))
+    .join('|')
+  const regex = new RegExp(pattern, 'g')
+
+  return (value) => value.replace(regex, (match) => replacements.get(match) ?? match)
+}
+
 export async function searchAndReplace(
   rootFolder: string,
   fromStrings: string[],
@@ -18,18 +52,16 @@ export async function searchAndReplace(
     throw new Error('fromStrings and toStrings arrays must have the same length')
   }
 
+  const replace = createReplacer(fromStrings, toStrings)
+
   async function processFile(filePath: string): Promise<void> {
     try {
       const content = await readFile(filePath, 'utf8')
-      let newContent = content
+      let newContent = replace(content)
 
-      for (const [i, fromString] of fromStrings.entries()) {
-        const regex = new RegExp(escapeRegExp(fromString), 'g')
-        newContent = newContent.replace(regex, () => toStrings[i])
-        // Make sure we maintain the possible newline at the end of the file
-        if (content.endsWith('\n') && !newContent.endsWith('\n')) {
-          newContent += '\n'
-        }
+      // Make sure we maintain the possible newline at the end of the file
+      if (content.endsWith('\n') && !newContent.endsWith('\n')) {
+        newContent += '\n'
       }
 
       if (content !== newContent) {
@@ -97,11 +129,7 @@ export async function searchAndReplace(
         }
 
         const oldPath = join(directoryPath, entry.name)
-        let newName = entry.name
-
-        for (const [i, fromString] of fromStrings.entries()) {
-          newName = newName.replace(new RegExp(escapeRegExp(fromString), 'g'), () => toStrings[i])
-        }
+        const newName = replace(entry.name)
 
         const newPath = join(directoryPath, newName)
 
