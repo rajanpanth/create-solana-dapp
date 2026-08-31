@@ -13,8 +13,12 @@ export function findTemplate({
   templates: TemplateJsonTemplate[]
   verbose: boolean
 }): Template {
-  // Check if it's a local file path (absolute or relative)
-  const isLocalPath = name.startsWith('/') || name.startsWith('./') || name.startsWith('../')
+  // Check if it's a local file path (absolute or relative).
+  // `isAbsolute` rather than a leading `/` so Windows paths like `C:\tpl` and
+  // `C:/tpl` are recognised: the latter contains a `/` and was otherwise
+  // treated as an external template, handing giget `C:` as a provider prefix.
+  // The relative test accepts both separators for the same reason.
+  const isLocalPath = isAbsolute(name) || /^\.\.?[/\\]/.test(name)
 
   if (isLocalPath) {
     // Resolve to absolute path
