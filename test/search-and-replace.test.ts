@@ -1,10 +1,19 @@
 // test/search-and-replace.test.ts
-import mockFs from 'mock-fs'
 import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { searchAndReplace } from '../src/utils/search-and-replace'
+
+// Only `readFile` is stubbed, and only for the error test below. mock-fs used
+// to provide that by creating a mode 0o000 file, but it patches Node's fs
+// internals and throws at import time on Node 26 (tschaub/mock-fs#447), which
+// failed the whole suite on the `current` matrix leg. Everything else in this
+// file already works against a real temp directory.
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, readFile: vi.fn(actual.readFile) }
+})
 
 describe('searchAndReplace', () => {
   let tempDir: string
@@ -119,15 +128,8 @@ describe('searchAndReplace', () => {
   it('should handle errors gracefully', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    // Mock the file system and simulate an error for readFile
-    mockFs({
-      [tempDir]: {
-        'file1.txt': mockFs.file({
-          content: 'Hello world',
-          mode: 0o000, // No read permissions, to trigger an error
-        }),
-      },
-    })
+    // Make the first file read fail, the way an unreadable file would
+    vi.mocked(readFile).mockRejectedValueOnce(new Error('EACCES: permission denied, open'))
 
     // Run searchAndReplace and expect it to handle the error without throwing
     await searchAndReplace(tempDir, ['Hello'], ['Hi'], false, true)
@@ -135,8 +137,6 @@ describe('searchAndReplace', () => {
     // Verify that an error was logged
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Error processing file'), expect.any(Error))
 
-    // Restore the mocked file system and the console spy
-    mockFs.restore()
     consoleErrorSpy.mockRestore()
   })
 })
